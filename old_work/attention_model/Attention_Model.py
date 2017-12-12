@@ -1,10 +1,9 @@
 import tensorflow as tf
 from tensorflow.python.platform import flags
 from tensorflow.contrib.layers.python.layers import regularizers
-from My_Net.Inception_v3 import Inception_v3
-from My_Net.utils import *
-from My_Net.Attention_Decoder import Attention_Decoder
-from My_Log.Log_Manager import *
+from DL_Tools.My_Net.Inception_v3 import Inception_v3
+from DL_Tools.My_Net.utils import *
+from DL_Tools.My_Net.Attention_Decoder import Attention_Decoder
 
 class Attention_Model(object):
     def __init__(self,net_input,net_label = None):
@@ -45,7 +44,7 @@ class Attention_Model(object):
                     or (self.scope is None and "Attention_Model" in v.name):
                 self.train_variables.append(v)
                 tmp_num = 1
-                for n in v.shape:
+                for n in v.get_shape():
                     tmp_num *= n.value
                 self.train_variables_number += tmp_num
         return self.train_variables
@@ -62,7 +61,7 @@ class Attention_Model(object):
     def build_model(self,scope = None,reuse = False):
         self.scope = scope
         with tf.variable_scope(self.scope, "Attention_Model",reuse=reuse):
-            print_info("building Inception_v3...")
+            print "building Inception_v3..."
             inception = Inception_v3(final_endpoint=self.final_point,
                                      depth_multiplier=self.depth_multiplier,
                                      min_depth=self.min_depth,
@@ -78,8 +77,8 @@ class Attention_Model(object):
             print net.get_shape()
             self.cnn_variable_list = inception.train_variables
             self.cnn_saver = tf.train.Saver(self.cnn_variable_list)
-            print_info("Done.")
-            print_info("building Attention_Decoder...")
+            print "Done."
+            print "building Attention_Decoder..."
             with tf.variable_scope("LSTM_Cell"):
                 lstm_cell = tf.contrib.rnn.LSTMCell(self.num_lstm_units,
                                                     use_peepholes=False,
@@ -107,7 +106,7 @@ class Attention_Model(object):
                                                   )
             res_outputs,res_states = attention_decoder.ops(net,is_training=self.is_training)
             self.attns = attention_decoder.attns
-            print_info("Done")
+            print "Done"
             self.saver = tf.train.Saver()
             self.net_res = res_outputs
             self.pred_res = [tf.expand_dims(self.get_char_logits(res_outputs[i],i),dim=1) for i in xrange(self.seq_length)]
@@ -162,15 +161,18 @@ class Attention_Model(object):
                 # weights = tf.to_float(known_char)
             logits_list = tf.unstack(self.pred_res, axis=1)
             weights_list = tf.unstack(weights, axis=1)
+            def my_softmax_cross_entropy_with_logits(target, logit):
+                return tf.nn.softmax_cross_entropy_with_logits(labels = target, logits = logit)
             loss = tf.contrib.legacy_seq2seq.sequence_loss(
                 logits_list,
                 labels_list,
                 weights_list,
-                softmax_loss_function=tf.nn.softmax_cross_entropy_with_logits,
+                softmax_loss_function=my_softmax_cross_entropy_with_logits,
                 average_across_timesteps=False#!!!!!
             )
-            regularizer_loss = tf.losses.get_regularization_loss()
-            return loss + regularizer_loss
+            regularizer_loss = tf.losses.get_regularization_losses()
+            total_loss = tf.reduce_mean(loss + regularizer_loss)
+            return total_loss
 
 
     def get_attns(self):
