@@ -29,7 +29,10 @@ class V_Weight(object):
                 for i in range(weight_shape[3]):
                     tmp_map_weight = self.weight[:,:,:,i]
                     tmp_shape = tmp_map_weight.shape
-                    tmp_color_rate = 255./(np.max(tmp_map_weight) - np.min(self.weight))#统计单个map决定颜色分量
+                    if np.max(tmp_map_weight) - np.min(self.weight) != 0:
+                        tmp_color_rate = 255./(np.max(tmp_map_weight) - np.min(self.weight))#统计单个map决定颜色分量
+                    else:
+                        tmp_color_rate = 0
                     tmp_map_weight = tmp_map_weight * tmp_color_rate
                     tmp_map_weight = np.asarray(tmp_map_weight,np.uint8)
                     tmp_visual_map = np.full((tmp_shape[0],tmp_shape[1],4),0,np.uint8)
