@@ -9,6 +9,7 @@ class Feature_Extract_Visualization_Layer(object):
             self.padding = ((kernel[0]-1)/2,(kernel[1]-1)/2)
         elif padding == "VALID":
             self.padding = (0,0)
+        self.simple_map = None
 
     def get_box_from_point(self,x, y, kernel, pad, stride):
         # x_max y_max not include
@@ -26,6 +27,13 @@ class Feature_Extract_Visualization_Layer(object):
         return x_min, y_min, x_max, y_max
 
     def map_to_ori_image(self,i,j):
+        if self.simple_map is not None:
+            return self.simple_map(i,j)
+        else:
+            self.build_simple_map()
+            return self.simple_map(i, j)
+
+    def _map_to_ori_image(self,i,j):
         if self.prev_layers is None:
             return self.get_box_from_point(i,j,self.kernel,self.padding,self.stride)
         else:
@@ -51,6 +59,18 @@ class Feature_Extract_Visualization_Layer(object):
             x_max = np.max(ori_box_res[:,2])
             y_max = np.max(ori_box_res[:,3])
             return x_min,y_min,x_max,y_max
+
+    def build_simple_map(self):
+        x_min0, y_min0, x_max0, y_max0 = self._map_to_ori_image(0, 0)
+        x_min1, y_min1, x_max1, y_max1 = self._map_to_ori_image(1, 1)
+        def simple_map(i,j):
+            x_min = (x_min1 - x_min0) * i + x_min0
+            x_max = (x_max1 - x_max0) * i + x_max0
+            y_min = (y_min1 - y_min0) * j + y_min0
+            y_max = (y_max1 - y_max0) * j + y_max0
+            return x_min,y_min,x_max,y_max
+        self.simple_map = simple_map
+
 
 
 

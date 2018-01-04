@@ -11,6 +11,7 @@ class Attention_Decoder(object):
         self.get_input = loop_function
         self.attn_vec_length = attn_vec_length
         self.weight_decay = weight_decay
+        self.key_point = {}
 
 
     def get_variables(self):
@@ -41,6 +42,11 @@ class Attention_Decoder(object):
             if self.attn_vec_length == None:
                 self.attn_vec_length = self.a_s_c
             self.attns = []
+            self.ds_s = []
+            self.prev_states = []
+            self.cell_out_s = []
+            self.cell_input_s = []
+            self.input_x_s = []
             prev_states = None
             prev_out = None
             res_outputs = []
@@ -54,12 +60,16 @@ class Attention_Decoder(object):
                 else:
                     attns,ds = self.build_attention(prev_states, True)
                     input_x = self.get_input(prev_out,i)
-
+                self.input_x_s .append(input_x)
                 with tf.variable_scope("input_linear") as tmp_scope:
                     if i > 0 :
                         tmp_scope.reuse_variables()
                     cell_input = utils.linear([input_x] + ds, input_x_length,True)
+                self.cell_input_s.append(cell_input)
                 cell_state = prev_states
+                with tf.variable_scope("run_cell") as tmp_scope:
+                    if i > 0 :
+                        tmp_scope.reuse_variables()
                 cell_out, prev_states = self.cell(cell_input, cell_state)
                 with tf.variable_scope("output_linear") as tmp_scope:
                     if i > 0 :
@@ -68,6 +78,15 @@ class Attention_Decoder(object):
                 prev_out = attn_out
                 res_outputs.append(attn_out)
                 self.attns.append(attns)
+                self.ds_s.append(ds)
+                self.prev_states.append(prev_states)
+                self.cell_out_s.append(cell_out)
+        self.key_point["attns"] = self.attns
+        self.key_point["ds_s"] = self.ds_s
+        self.key_point["prev_states"] = self.prev_states
+        self.key_point["cell_out_s"] = self.cell_out_s
+        self.key_point["cell_input_s"] = self.cell_input_s
+        self.key_point["input_x_s"] = self.input_x_s
         self.get_variables()
         res_states = prev_states
         return res_outputs, res_states

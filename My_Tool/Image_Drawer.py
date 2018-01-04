@@ -51,7 +51,6 @@ class Image_Drawer(object):
         if self.super_layer is None:
             self.x_bias = 0
             self.y_bias = 0
-        print self.x_bias,self.y_bias,self.layer_name,self.layer_shape
         bef_bias = 0
         for sub_layer in self.sub_layers:
             sub_layer_idx = sub_layer.layer_level[-1]
@@ -72,7 +71,6 @@ class Image_Drawer(object):
         pos_x = self.x_bias + self.layer_shape[0]/2 - txt_shape[0]/2
         pos_y = self.y_bias
         image_draw.text((pos_x,pos_y),self.layer_name,font = font)
-        print
         image_draw.rectangle(((self.x_bias,self.y_bias),(self.x_bias+self.layer_shape[0]-1,self.y_bias+self.layer_shape[1]-1)),outline="red")
         for sub_layer in self.sub_layers:
             sub_layer.draw(image)

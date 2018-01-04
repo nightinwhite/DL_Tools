@@ -114,7 +114,7 @@ class Inception_v4(object):
         self.train_variables_number = 0
         for v in all_variables:
             if (self.scope is not None and self.scope in v.name)\
-                    or (self.scope is None and "Inception_v3" in v.name):
+                    or (self.scope is None and "Inception_V4" in v.name):
                 self.train_variables.append(v)
                 tmp_num = 1
                 for n in v.shape:
@@ -123,115 +123,117 @@ class Inception_v4(object):
         return self.train_variables
 
 
-    def __call__(self,input,scope=None,reuse = False):
-        tmp_key_point_name = "p1_conv2d"
+    def __call__(self,input,scope="Inception_V4",reuse = False):
+        self.scope = scope
+        with tf.variable_scope(scope,reuse=reuse):
+            tmp_key_point_name = "p1_conv2d"
 
-        net = self.conv2d_bn(input, 32, 3, 3,"p1_conv2d", strides=(2, 2), padding='valid')
-        # --------------------------------------------
-        self.key_point[tmp_key_point_name] = net
-        if tmp_key_point_name == self.final_endpoint:
-            return net
-        tmp_key_point_name = "p2_conv2d"
-        #---------------------------------------------
-        net = self.conv2d_bn(net, 32, 3, 3,"p2_conv2d", padding='valid')
-        # --------------------------------------------
-        self.key_point[tmp_key_point_name] = net
-        if tmp_key_point_name == self.final_endpoint:
-            return net
-        tmp_key_point_name = "p3_conv2d"
-        # ---------------------------------------------
-        net = self.conv2d_bn(net, 64, 3, 3,"p3_conv2d",)
-        # --------------------------------------------
-        self.key_point[tmp_key_point_name] = net
-        if tmp_key_point_name == self.final_endpoint:
-            return net
-        tmp_key_point_name = "p4_mixed"
-        # ---------------------------------------------
-        branch_0 = tf.layers.max_pooling2d(net,(3, 3), strides=(2, 2), padding='valid')
-
-        branch_1 = self.conv2d_bn(net, 96, 3, 3, "p4_conv2d",strides=(2, 2), padding='valid')
-
-        net = tf.concat([branch_0, branch_1], axis=-1)
-        # --------------------------------------------
-        self.key_point[tmp_key_point_name] = net
-        if tmp_key_point_name == self.final_endpoint:
-            return net
-        tmp_key_point_name = "p5_mixed"
-        # ---------------------------------------------
-        branch_0 = self.conv2d_bn(net, 64, 1, 1, "p5_conv2d_branch0_0")
-        branch_0 = self.conv2d_bn(branch_0, 96, 3, 3, "p5_conv2d_branch0_1", padding='valid')
-
-        branch_1 = self.conv2d_bn(net, 64, 1, 1, "p5_conv2d_branch1_0")
-        branch_1 = self.conv2d_bn(branch_1, 64, 1, 7, "p5_conv2d_branch1_1")
-        branch_1 = self.conv2d_bn(branch_1, 64, 7, 1, "p5_conv2d_branch1_2")
-        branch_1 = self.conv2d_bn(branch_1, 96, 3, 3, "p5_conv2d_branch1_3", padding='valid')
-
-        net = tf.concat([branch_0, branch_1], axis=-1)
-        # --------------------------------------------
-        self.key_point[tmp_key_point_name] = net
-        if tmp_key_point_name == self.final_endpoint:
-            return net
-        tmp_key_point_name = "p6_mixed"
-        # ---------------------------------------------
-        branch_0 = self.conv2d_bn(net, 192, 3, 3, "p6_conv2d_branch0", strides=(2, 2), padding='valid')
-        branch_1 = tf.layers.max_pooling2d(net,(3, 3), strides=(2, 2), padding='valid')
-
-        net = tf.concat([branch_0, branch_1], axis=-1)
-        # --------------------------------------------
-        self.key_point[tmp_key_point_name] = net
-        if tmp_key_point_name == self.final_endpoint:
-            return net
-        tmp_key_point_name = "p7_mixed_0"
-        # ---------------------------------------------
-        # 35 x 35 x 384
-        # 4 x Inception-A blocks
-        for idx in range(4):
-            net = self.block_inception_a(net,"p7_mixed_{0}".format(idx))
+            net = self.conv2d_bn(input, 32, 3, 3, "p1_conv2d", strides=(2, 2), padding='valid')
             # --------------------------------------------
             self.key_point[tmp_key_point_name] = net
             if tmp_key_point_name == self.final_endpoint:
                 return net
-            tmp_key_point_name = "p7_mixed_{0}".format(idx+1)
+            tmp_key_point_name = "p2_conv2d"
             # ---------------------------------------------
-        # 35 x 35 x 384
-        # Reduction-A block
-        tmp_key_point_name = "p7_mixed_reduction"
-        net = self.block_reduction_a(net,"p7_mixed_reduction")
-        # --------------------------------------------
-        self.key_point[tmp_key_point_name] = net
-        if tmp_key_point_name == self.final_endpoint:
-            return net
-        tmp_key_point_name = "p8_mixed_0"
-        # ---------------------------------------------
-        # 17 x 17 x 1024
-        # 7 x Inception-B blocks
-        for idx in range(7):
-            net = self.block_inception_b(net,"p8_mixed_{0}".format(idx))
+            net = self.conv2d_bn(net, 32, 3, 3, "p2_conv2d", padding='valid')
             # --------------------------------------------
             self.key_point[tmp_key_point_name] = net
             if tmp_key_point_name == self.final_endpoint:
                 return net
-            tmp_key_point_name = "p8_mixed_{0}".format(idx+1)
+            tmp_key_point_name = "p3_conv2d"
             # ---------------------------------------------
-        # 17 x 17 x 1024
-        # Reduction-B block
-        tmp_key_point_name = "p8_mixed_reduction"
-        net = self.block_reduction_b(net,"p8_mixed_reduction")
-        # --------------------------------------------
-        self.key_point[tmp_key_point_name] = net
-        if tmp_key_point_name == self.final_endpoint:
-            return net
-        tmp_key_point_name = "p9_mixed_0"
-        # ---------------------------------------------
-        # 8 x 8 x 1536
-        # 3 x Inception-C blocks
-        for idx in range(3):
-            net = self.block_inception_c(net,"p9_mixed_{0}".format(idx))
+            net = self.conv2d_bn(net, 64, 3, 3, "p3_conv2d", )
             # --------------------------------------------
             self.key_point[tmp_key_point_name] = net
             if tmp_key_point_name == self.final_endpoint:
                 return net
-            tmp_key_point_name = "p9_mixed_{0}".format(idx+1)
+            tmp_key_point_name = "p4_mixed"
             # ---------------------------------------------
+            branch_0 = tf.layers.max_pooling2d(net, (3, 3), strides=(2, 2), padding='valid')
+
+            branch_1 = self.conv2d_bn(net, 96, 3, 3, "p4_conv2d", strides=(2, 2), padding='valid')
+
+            net = tf.concat([branch_0, branch_1], axis=-1)
+            # --------------------------------------------
+            self.key_point[tmp_key_point_name] = net
+            if tmp_key_point_name == self.final_endpoint:
+                return net
+            tmp_key_point_name = "p5_mixed"
+            # ---------------------------------------------
+            branch_0 = self.conv2d_bn(net, 64, 1, 1, "p5_conv2d_branch0_0")
+            branch_0 = self.conv2d_bn(branch_0, 96, 3, 3, "p5_conv2d_branch0_1", padding='valid')
+
+            branch_1 = self.conv2d_bn(net, 64, 1, 1, "p5_conv2d_branch1_0")
+            branch_1 = self.conv2d_bn(branch_1, 64, 1, 7, "p5_conv2d_branch1_1")
+            branch_1 = self.conv2d_bn(branch_1, 64, 7, 1, "p5_conv2d_branch1_2")
+            branch_1 = self.conv2d_bn(branch_1, 96, 3, 3, "p5_conv2d_branch1_3", padding='valid')
+
+            net = tf.concat([branch_0, branch_1], axis=-1)
+            # --------------------------------------------
+            self.key_point[tmp_key_point_name] = net
+            if tmp_key_point_name == self.final_endpoint:
+                return net
+            tmp_key_point_name = "p6_mixed"
+            # ---------------------------------------------
+            branch_0 = self.conv2d_bn(net, 192, 3, 3, "p6_conv2d_branch0", strides=(2, 2), padding='valid')
+            branch_1 = tf.layers.max_pooling2d(net, (3, 3), strides=(2, 2), padding='valid')
+
+            net = tf.concat([branch_0, branch_1], axis=-1)
+            # --------------------------------------------
+            self.key_point[tmp_key_point_name] = net
+            if tmp_key_point_name == self.final_endpoint:
+                return net
+            tmp_key_point_name = "p7_mixed_0"
+            # ---------------------------------------------
+            # 35 x 35 x 384
+            # 4 x Inception-A blocks
+            for idx in range(4):
+                net = self.block_inception_a(net, "p7_mixed_{0}".format(idx))
+                # --------------------------------------------
+                self.key_point[tmp_key_point_name] = net
+                if tmp_key_point_name == self.final_endpoint:
+                    return net
+                tmp_key_point_name = "p7_mixed_{0}".format(idx + 1)
+                # ---------------------------------------------
+            # 35 x 35 x 384
+            # Reduction-A block
+            tmp_key_point_name = "p7_mixed_reduction"
+            net = self.block_reduction_a(net, "p7_mixed_reduction")
+            # --------------------------------------------
+            self.key_point[tmp_key_point_name] = net
+            if tmp_key_point_name == self.final_endpoint:
+                return net
+            tmp_key_point_name = "p8_mixed_0"
+            # ---------------------------------------------
+            # 17 x 17 x 1024
+            # 7 x Inception-B blocks
+            for idx in range(7):
+                net = self.block_inception_b(net, "p8_mixed_{0}".format(idx))
+                # --------------------------------------------
+                self.key_point[tmp_key_point_name] = net
+                if tmp_key_point_name == self.final_endpoint:
+                    return net
+                tmp_key_point_name = "p8_mixed_{0}".format(idx + 1)
+                # ---------------------------------------------
+            # 17 x 17 x 1024
+            # Reduction-B block
+            tmp_key_point_name = "p8_mixed_reduction"
+            net = self.block_reduction_b(net, "p8_mixed_reduction")
+            # --------------------------------------------
+            self.key_point[tmp_key_point_name] = net
+            if tmp_key_point_name == self.final_endpoint:
+                return net
+            tmp_key_point_name = "p9_mixed_0"
+            # ---------------------------------------------
+            # 8 x 8 x 1536
+            # 3 x Inception-C blocks
+            for idx in range(3):
+                net = self.block_inception_c(net, "p9_mixed_{0}".format(idx))
+                # --------------------------------------------
+                self.key_point[tmp_key_point_name] = net
+                if tmp_key_point_name == self.final_endpoint:
+                    return net
+                tmp_key_point_name = "p9_mixed_{0}".format(idx + 1)
+                # ---------------------------------------------
 
 

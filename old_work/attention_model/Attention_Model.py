@@ -35,6 +35,31 @@ class Attention_Model(object):
 
         pass
 
+    def value_to_bin(self, v1, v2, l):
+        res = []
+        for i in range(l):
+            res.append(v1 % 2)
+            v1 = v1 / 2
+        for i in range(l):
+            res.append(v2 % 2)
+            v2 = v2 / 2
+        res.reverse()
+        return res
+
+    def add_pos_info(self, conv_net):
+        BATCH_SIZE = conv_net.get_shape()[0]
+        CONV_WIDTH = conv_net.get_shape()[1]
+        CONV_HEIGHT = conv_net.get_shape()[2]
+        res = []
+        for i in range(CONV_WIDTH):
+            tmp_res = []
+            for j in range(CONV_HEIGHT):
+                tmp_res.append(self.value_to_bin(j, i, 6))
+            res.append(tmp_res)
+        res = [res for i in range(BATCH_SIZE)]
+        pos_info_ = tf.constant(value=res, dtype=tf.float32)
+        return tf.concat([conv_net, pos_info_], axis=3)
+
     def get_variables(self):
         all_variables = tf.global_variables()
         self.train_variables = []
@@ -106,6 +131,7 @@ class Attention_Model(object):
                                                   )
             res_outputs,res_states = attention_decoder.ops(net,is_training=self.is_training)
             self.attns = attention_decoder.attns
+            self.key_point = dict[inception.key_point,attention_decoder.key_point]
             print "Done"
             self.saver = tf.train.Saver()
             self.net_res = res_outputs
